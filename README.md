@@ -1,6 +1,6 @@
 # Klondike finance protocol
 
-![](docs/hero.png)
+![](docs/hero1.png)
 
 Smart contracts for algorithmic synthetics platform.
 
