@@ -33,14 +33,14 @@ Stabilization fund will make the system more sustainable in comparison with othe
 
 ## A Stabilization Fund and a Subsidized Debt Market
 
-– An oracle uses uniswap to get the kBTC/wBTC price. If the price is above 1, then old_supply\*(price-1) amount of kBTC is minted. After that, 50% (currently predefined and will be possible to change later via governance) goes to the stabilization fund, the other 50% goes to the KLON holders who stake them to the Boardroom.
+– An oracle uses uniswap to get the dBTC/wBTC price. If the price is above 1, then old_supply\*(price-1) amount of dBTC is minted. After that, 50% (currently predefined and will be possible to change later via governance) goes to the stabilization fund, the other 50% goes to the DRV holders who stake them to the Boardroom.
 
-– If the supply of a synthetic asset grows, the algorithm mints additional supply and distributes it between the stabilization fund and KLON token holders.
+– If the supply of a synthetic asset grows, the algorithm mints additional supply and distributes it between the stabilization fund and DRV token holders.
 
-– In case of an excess supply, the bond market mechanism is launched, which is incentivized by switching the inflation of the KLON token to the bond liquidity market. This is a fairly known procedure.
+– In case of an excess supply, the bond market mechanism is launched, which is incentivized by switching the inflation of the DRV token to the bond liquidity market. This is a fairly known procedure.
 
 – If the bond mechanism is not sufficient to stabilize the exchange rate, funds from the reserve fund are used.
 
-To chat with us & stay up to date, join our [Telegram](https://t.me/klondike_discussion) or [Discord](https://discord.gg/67NXsuwZ8W).
+To chat with us & stay up to date, join our [Telegram]() or [Discord]().
 
-Follow us on [Twitter](https://twitter.com/KlondikeFinance) and [Medium](https://klondikefinance.medium.com)
+Follow us on [Twitter]() and [Medium]()
