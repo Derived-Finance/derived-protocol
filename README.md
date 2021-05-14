@@ -1,4 +1,4 @@
-# Klondike finance protocol
+# Derived finance protocol
 
 ![](docs/hero1.png)
 
