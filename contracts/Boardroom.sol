@@ -7,13 +7,13 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import './lib/Safe112.sol';
 import './owner/Operator.sol';
 import './utils/ContractGuard.sol';
-import './interfaces/IKlondikeAsset.sol';
+import './interfaces/IDerivedAsset.sol';
 
-contract KlonWrapper {
+contract DerivedWrapper {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IERC20 public klon;
+    IERC20 public derived;
 
     uint256 private _totalSupply;
     mapping(address => uint256) private _balances;
@@ -29,7 +29,7 @@ contract KlonWrapper {
     function stake(uint256 amount) public virtual {
         _totalSupply = _totalSupply.add(amount);
         _balances[msg.sender] = _balances[msg.sender].add(amount);
-        klon.safeTransferFrom(msg.sender, address(this), amount);
+        derived.safeTransferFrom(msg.sender, address(this), amount);
     }
 
     function withdraw(uint256 amount) public virtual {
@@ -40,11 +40,11 @@ contract KlonWrapper {
         );
         _totalSupply = _totalSupply.sub(amount);
         _balances[msg.sender] = balance.sub(amount);
-        klon.safeTransfer(msg.sender, amount);
+        derived.safeTransfer(msg.sender, amount);
     }
 }
 
-contract Boardroom is KlonWrapper, ContractGuard, Operator {
+contract Boardroom is DerivedWrapper, ContractGuard, Operator {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -60,27 +60,27 @@ contract Boardroom is KlonWrapper, ContractGuard, Operator {
     struct BoardSnapshot {
         uint256 time;
         uint256 rewardReceived;
-        uint256 rewardPerKlon;
+        uint256 rewardPerDerived;
     }
 
     /* ========== STATE VARIABLES ========== */
 
-    IERC20 private kbtc;
+    IERC20 private dbtc;
 
     mapping(address => Boardseat) private directors;
     BoardSnapshot[] private boardHistory;
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(IERC20 _kbtc, IERC20 _klon) public {
-        kbtc = _kbtc;
-        klon = _klon;
+    constructor(IERC20 _dbtc, IERC20 _derived) public {
+        dbtc = _dbtc;
+        derived = _derived;
 
         BoardSnapshot memory genesisSnapshot =
             BoardSnapshot({
                 time: block.number,
                 rewardReceived: 0,
-                rewardPerKlon: 0
+                rewardPerDerived: 0
             });
         boardHistory.push(genesisSnapshot);
     }
@@ -134,13 +134,13 @@ contract Boardroom is KlonWrapper, ContractGuard, Operator {
 
     // =========== Director getters
 
-    function rewardPerKlon() public view returns (uint256) {
-        return getLatestSnapshot().rewardPerKlon;
+    function rewardPerDerived() public view returns (uint256) {
+        return getLatestSnapshot().rewardPerDerived;
     }
 
     function earned(address director) public view returns (uint256) {
-        uint256 latestRPS = getLatestSnapshot().rewardPerKlon;
-        uint256 storedRPS = getLastSnapshotOf(director).rewardPerKlon;
+        uint256 latestRPS = getLatestSnapshot().rewardPerDerived;
+        uint256 storedRPS = getLastSnapshotOf(director).rewardPerDerived;
 
         return
             balanceOf(director).mul(latestRPS.sub(storedRPS)).div(1e18).add(
@@ -182,7 +182,7 @@ contract Boardroom is KlonWrapper, ContractGuard, Operator {
         uint256 reward = directors[msg.sender].rewardEarned;
         if (reward > 0) {
             directors[msg.sender].rewardEarned = 0;
-            kbtc.safeTransfer(msg.sender, reward);
+            dbtc.safeTransfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
         }
     }
@@ -200,18 +200,18 @@ contract Boardroom is KlonWrapper, ContractGuard, Operator {
         );
 
         // Create & add new snapshot
-        uint256 prevRPS = getLatestSnapshot().rewardPerKlon;
+        uint256 prevRPS = getLatestSnapshot().rewardPerDerived;
         uint256 nextRPS = prevRPS.add(amount.mul(1e18).div(totalSupply()));
 
         BoardSnapshot memory newSnapshot =
             BoardSnapshot({
                 time: block.number,
                 rewardReceived: amount,
-                rewardPerKlon: nextRPS
+                rewardPerDerived: nextRPS
             });
         boardHistory.push(newSnapshot);
 
-        kbtc.safeTransferFrom(msg.sender, address(this), amount);
+        dbtc.safeTransferFrom(msg.sender, address(this), amount);
         emit RewardAdded(msg.sender, amount);
     }
 

@@ -10,7 +10,7 @@ pragma solidity ^0.6.0;
 /___/ \_, //_//_/\__//_//_/\__/ \__//_/ /_\_\
      /___/
 
-* Synthetix: KBTCRewards.sol
+* Synthetix: DBTCRewards.sol
 *
 * Docs: https://docs.synthetix.io/
 *
@@ -65,12 +65,12 @@ import '../interfaces/IRewardDistributionRecipient.sol';
 import '../token/LPTokenWrapper.sol';
 import '../owner/Operator.sol';
 
-contract WBTCKLONLPTokenKlonPool is
+contract WBTCDRVLPTokenDerivedPool is
     LPTokenWrapper,
     IRewardDistributionRecipient,
     Operator
 {
-    IERC20 public klon;
+    IERC20 public derived;
     uint256 public DURATION = 365 days;
 
     uint256 public starttime;
@@ -88,11 +88,11 @@ contract WBTCKLONLPTokenKlonPool is
     event RewardPaid(address indexed user, uint256 reward);
 
     constructor(
-        address klon_,
+        address derived_,
         address lptoken_,
         uint256 starttime_
     ) public {
-        klon = IERC20(klon_);
+        derived = IERC20(derived_);
         lpt = IERC20(lptoken_);
         starttime = starttime_;
     }
@@ -100,7 +100,7 @@ contract WBTCKLONLPTokenKlonPool is
     modifier checkStart() {
         require(
             block.timestamp >= starttime,
-            'WBTCKLONLPTokenKlonPool: not start'
+            'WBTCDRVLPTokenDerivedPool: not start'
         );
         _;
     }
@@ -150,7 +150,7 @@ contract WBTCKLONLPTokenKlonPool is
         updateReward(msg.sender)
         checkStart
     {
-        require(amount > 0, 'WBTCKLONLPTokenKlonPool: Cannot stake 0');
+        require(amount > 0, 'WBTCDRVLPTokenDerivedPool: Cannot stake 0');
         super.stake(amount);
         emit Staked(msg.sender, amount);
     }
@@ -162,7 +162,7 @@ contract WBTCKLONLPTokenKlonPool is
         updateReward(msg.sender)
         checkStart
     {
-        require(amount > 0, 'WBTCKLONLPTokenKlonPool: Cannot withdraw 0');
+        require(amount > 0, 'WBTCDRVLPTokenDerivedPool: Cannot withdraw 0');
         super.withdraw(amount);
         emit Withdrawn(msg.sender, amount);
     }
@@ -177,7 +177,7 @@ contract WBTCKLONLPTokenKlonPool is
         uint256 reward = earned(msg.sender);
         if (reward > 0) {
             rewards[msg.sender] = 0;
-            klon.safeTransfer(msg.sender, reward);
+            derived.safeTransfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
         }
     }

@@ -10,7 +10,7 @@ pragma solidity ^0.6.0;
 /___/ \_, //_//_/\__//_//_/\__/ \__//_/ /_\_\
      /___/
 
-* Synthetix: KBTCRewards.sol
+* Synthetix: DBTCRewards.sol
 *
 * Docs: https://docs.synthetix.io/
 *
@@ -62,7 +62,7 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 
 import '../interfaces/IRewardDistributionRecipient.sol';
 
-contract WBTCWrapper {
+contract RenBTCWrapper {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -92,8 +92,8 @@ contract WBTCWrapper {
     }
 }
 
-contract KBTCWBTCPool is WBTCWrapper, IRewardDistributionRecipient {
-    IERC20 public KBTC;
+contract DBTCRenBTCPool is RenBTCWrapper, IRewardDistributionRecipient {
+    IERC20 public DBTC;
     uint256 public DURATION = 5 days;
 
     uint256 public starttime;
@@ -111,17 +111,17 @@ contract KBTCWBTCPool is WBTCWrapper, IRewardDistributionRecipient {
     event RewardPaid(address indexed user, uint256 reward);
 
     constructor(
-        address KBTC_,
+        address DBTC_,
         address wbtc_,
         uint256 starttime_
     ) public {
-        KBTC = IERC20(KBTC_);
+        DBTC = IERC20(DBTC_);
         wbtc = IERC20(wbtc_);
         starttime = starttime_;
     }
 
     modifier checkStart() {
-        require(block.timestamp >= starttime, 'KBTCWBTCPool: not start');
+        require(block.timestamp >= starttime, 'DBTCRenBTCPool: not start');
         _;
     }
 
@@ -168,7 +168,7 @@ contract KBTCWBTCPool is WBTCWrapper, IRewardDistributionRecipient {
         updateReward(msg.sender)
         checkStart
     {
-        require(amount > 0, 'KBTCWBTCPool: Cannot stake 0');
+        require(amount > 0, 'DBTCRenBTCPool: Cannot stake 0');
         uint256 newDeposit = deposits[msg.sender].add(amount);
         deposits[msg.sender] = newDeposit;
         super.stake(amount);
@@ -181,7 +181,7 @@ contract KBTCWBTCPool is WBTCWrapper, IRewardDistributionRecipient {
         updateReward(msg.sender)
         checkStart
     {
-        require(amount > 0, 'KBTCWBTCPool: Cannot withdraw 0');
+        require(amount > 0, 'DBTCRenBTCPool: Cannot withdraw 0');
         deposits[msg.sender] = deposits[msg.sender].sub(amount);
         super.withdraw(amount);
         emit Withdrawn(msg.sender, amount);
@@ -196,7 +196,7 @@ contract KBTCWBTCPool is WBTCWrapper, IRewardDistributionRecipient {
         uint256 reward = earned(msg.sender);
         if (reward > 0) {
             rewards[msg.sender] = 0;
-            KBTC.safeTransfer(msg.sender, reward);
+            DBTC.safeTransfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
         }
     }

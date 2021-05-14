@@ -11,12 +11,12 @@ contract MockBoardroom is IBoardroom, Operator {
 
     /* ========== STATE VARIABLES ========== */
 
-    IERC20 public kbtc;
+    IERC20 public dbtc;
 
     /* ========== CONSTRUCTOR ========== */
 
-    constructor(address _kbtc) public {
-        kbtc = IERC20(_kbtc);
+    constructor(address _dbtc) public {
+        dbtc = IERC20(_dbtc);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -27,7 +27,7 @@ contract MockBoardroom is IBoardroom, Operator {
         onlyOperator
     {
         require(amount > 0, 'Boardroom: Cannot allocate 0');
-        kbtc.safeTransferFrom(msg.sender, address(this), amount);
+        dbtc.safeTransferFrom(msg.sender, address(this), amount);
         emit RewardAdded(msg.sender, amount);
     }
 

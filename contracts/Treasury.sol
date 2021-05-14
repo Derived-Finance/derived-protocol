@@ -7,7 +7,7 @@ import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 import './interfaces/IOracle.sol';
 import './interfaces/IBoardroom.sol';
-import './interfaces/IKlondikeAsset.sol';
+import './interfaces/IDerivedAsset.sol';
 import './interfaces/ISimpleERCFund.sol';
 import './lib/Babylonian.sol';
 import './lib/FixedPoint.sol';
@@ -17,8 +17,8 @@ import './utils/Epoch.sol';
 import './utils/ContractGuard.sol';
 
 /**
- * @title KBTC Treasury contract
- * @notice Monetary policy logic to adjust supplies of KBTC assets
+ * @title DBTC Treasury contract
+ * @notice Monetary policy logic to adjust supplies of DBTC assets
  * @author Summer Smith & Rick Sanchez
  */
 contract Treasury is ContractGuard, Epoch {
@@ -37,18 +37,18 @@ contract Treasury is ContractGuard, Epoch {
     // ========== CORE
     address public devfund;
     address public stablefund;
-    address public kbtc;
-    address public kbond;
-    address public klon;
+    address public dbtc;
+    address public dbond;
+    address public derived;
     address public boardroom;
 
-    address public kbondOracle;
+    address public dbondOracle;
     address public seigniorageOracle;
 
     // ========== PARAMS
-    uint256 public constant kbtcOneUnit = 1e18;
+    uint256 public constant dbtcOneUnit = 1e18;
     uint256 public constant wbtcOneUnit = 1e8;
-    uint256 public kbtcPriceCeiling; // sat / eth
+    uint256 public dbtcPriceCeiling; // sat / eth
     uint256 private accumulatedSeigniorage = 0;
     uint256 public devfundAllocationRate = 2; // %
     uint256 public stablefundAllocationRate = 50; // %
@@ -56,10 +56,10 @@ contract Treasury is ContractGuard, Epoch {
     /* ========== CONSTRUCTOR ========== */
 
     constructor(
-        address _kbtc,
-        address _kbond,
-        address _klon,
-        address _kbondOracle,
+        address _dbtc,
+        address _dbond,
+        address _derived,
+        address _dbondOracle,
         address _seigniorageOracle,
         address _boardroom,
         address _devfund,
@@ -67,17 +67,17 @@ contract Treasury is ContractGuard, Epoch {
         uint256 _startTime,
         uint256 _period
     ) public Epoch(_period, _startTime, 0) {
-        kbtc = _kbtc;
-        kbond = _kbond;
-        klon = _klon;
-        kbondOracle = _kbondOracle;
+        dbtc = _dbtc;
+        dbond = _dbond;
+        derived = _derived;
+        dbondOracle = _dbondOracle;
         seigniorageOracle = _seigniorageOracle;
 
         boardroom = _boardroom;
         devfund = _devfund;
         stablefund = _stablefund;
 
-        kbtcPriceCeiling = uint256(105).mul(wbtcOneUnit).div(10**2);
+        dbtcPriceCeiling = uint256(105).mul(wbtcOneUnit).div(10**2);
     }
 
     /* =================== Modifier =================== */
@@ -90,9 +90,9 @@ contract Treasury is ContractGuard, Epoch {
 
     modifier checkOperator {
         require(
-            IKlondikeAsset(kbtc).operator() == address(this) &&
-                IKlondikeAsset(kbond).operator() == address(this) &&
-                IKlondikeAsset(klon).operator() == address(this) &&
+            IDerivedAsset(dbtc).operator() == address(this) &&
+                IDerivedAsset(dbond).operator() == address(this) &&
+                IDerivedAsset(derived).operator() == address(this) &&
                 Operator(boardroom).operator() == address(this),
             'Treasury: need more permission'
         );
@@ -108,21 +108,21 @@ contract Treasury is ContractGuard, Epoch {
     }
 
     // sat / eth
-    function getKbondOraclePrice() public view returns (uint256) {
-        return _getKBTCPrice(kbondOracle);
+    function getdbondOraclePrice() public view returns (uint256) {
+        return _getDBTCPrice(dbondOracle);
     }
 
     // sat / eth
     function getSeigniorageOraclePrice() public view returns (uint256) {
-        return _getKBTCPrice(seigniorageOracle);
+        return _getDBTCPrice(seigniorageOracle);
     }
 
     // sat / eth
-    function _getKBTCPrice(address oracle) internal view returns (uint256) {
-        try IOracle(oracle).consult(kbtc, kbtcOneUnit) returns (uint256 price) {
+    function _getDBTCPrice(address oracle) internal view returns (uint256) {
+        try IOracle(oracle).consult(dbtc, dbtcOneUnit) returns (uint256 price) {
             return price;
         } catch {
-            revert('Treasury: failed to consult kbtc price from the oracle');
+            revert('Treasury: failed to consult dbtc price from the oracle');
         }
     }
 
@@ -132,10 +132,10 @@ contract Treasury is ContractGuard, Epoch {
         require(!initialized, 'Treasury: initialized');
 
         // burn all of it's balance
-        IKlondikeAsset(kbtc).burn(IERC20(kbtc).balanceOf(address(this)));
+        IDerivedAsset(dbtc).burn(IERC20(dbtc).balanceOf(address(this)));
 
         // set accumulatedSeigniorage to it's balance
-        accumulatedSeigniorage = IERC20(kbtc).balanceOf(address(this));
+        accumulatedSeigniorage = IERC20(dbtc).balanceOf(address(this));
 
         initialized = true;
         emit Initialized(msg.sender, block.number);
@@ -144,20 +144,20 @@ contract Treasury is ContractGuard, Epoch {
     function migrate(address target) public onlyOperator checkOperator {
         require(!migrated, 'Treasury: migrated');
 
-        // kbtc
-        Operator(kbtc).transferOperator(target);
-        Operator(kbtc).transferOwnership(target);
-        IERC20(kbtc).transfer(target, IERC20(kbtc).balanceOf(address(this)));
+        // dbtc
+        Operator(dbtc).transferOperator(target);
+        Operator(dbtc).transferOwnership(target);
+        IERC20(dbtc).transfer(target, IERC20(dbtc).balanceOf(address(this)));
 
-        // kbond
-        Operator(kbond).transferOperator(target);
-        Operator(kbond).transferOwnership(target);
-        IERC20(kbond).transfer(target, IERC20(kbond).balanceOf(address(this)));
+        // dbond
+        Operator(dbond).transferOperator(target);
+        Operator(dbond).transferOwnership(target);
+        IERC20(dbond).transfer(target, IERC20(dbond).balanceOf(address(this)));
 
-        // klon
-        Operator(klon).transferOperator(target);
-        Operator(klon).transferOwnership(target);
-        IERC20(klon).transfer(target, IERC20(klon).balanceOf(address(this)));
+        // derived
+        Operator(derived).transferOperator(target);
+        Operator(derived).transferOwnership(target);
+        IERC20(derived).transfer(target, IERC20(derived).balanceOf(address(this)));
 
         migrated = true;
         emit Migration(target);
@@ -183,18 +183,18 @@ contract Treasury is ContractGuard, Epoch {
         emit StableFundRateChanged(msg.sender, rate);
     }
 
-    function setKBTCPriceCeiling(uint256 percentage) public onlyOperator {
-        kbtcPriceCeiling = percentage.mul(wbtcOneUnit).div(10**2);
+    function setdBTCPriceCeiling(uint256 percentage) public onlyOperator {
+        dbtcPriceCeiling = percentage.mul(wbtcOneUnit).div(10**2);
     }
 
     /* ========== MUTABLE FUNCTIONS ========== */
 
-    function _updateKBTCPrice() internal {
-        try IOracle(kbondOracle).update() {} catch {}
+    function _updateDBTCPrice() internal {
+        try IOracle(dbondOracle).update() {} catch {}
         try IOracle(seigniorageOracle).update() {} catch {}
     }
 
-    function buyKbonds(uint256 amount, uint256 targetPrice)
+    function buyDbonds(uint256 amount, uint256 targetPrice)
         external
         onlyOneBlock
         checkMigration
@@ -203,43 +203,43 @@ contract Treasury is ContractGuard, Epoch {
     {
         require(
             amount > 0,
-            'Treasury: cannot purchase kbonds with zero amount'
+            'Treasury: cannot purchase dbonds with zero amount'
         );
 
-        uint256 kbondPrice = getKbondOraclePrice(); // sat / eth
-        require(kbondPrice == targetPrice, 'Treasury: kbtc price moved');
+        uint256 dbondPrice = getDbondOraclePrice(); // sat / eth
+        require(dbondPrice == targetPrice, 'Treasury: dbtc price moved');
         require(
-            kbondPrice < wbtcOneUnit,
-            'Treasury: kbtcPrice not eligible for kbond purchase'
+            dbondPrice < wbtcOneUnit,
+            'Treasury: dbtcPrice not eligible for dbond purchase'
         );
 
-        IKlondikeAsset(kbtc).burnFrom(msg.sender, amount);
-        IKlondikeAsset(kbond).mint(
+        IDerivedAsset(dbtc).burnFrom(msg.sender, amount);
+        IDerivedAsset(dbond).mint(
             msg.sender,
-            amount.mul(wbtcOneUnit).div(kbondPrice)
+            amount.mul(wbtcOneUnit).div(dbondPrice)
         );
-        _updateKBTCPrice();
+        _updateDBTCPrice();
 
-        emit BoughtKbonds(msg.sender, amount);
+        emit BoughtDbonds(msg.sender, amount);
     }
 
-    function redeemKbonds(uint256 amount, uint256 targetPrice)
+    function redeemDbonds(uint256 amount, uint256 targetPrice)
         external
         onlyOneBlock
         checkMigration
         checkStartTime
         checkOperator
     {
-        require(amount > 0, 'Treasury: cannot redeem kbonds with zero amount');
+        require(amount > 0, 'Treasury: cannot redeem dbonds with zero amount');
 
-        uint256 kbtcPrice = _getKBTCPrice(kbondOracle);
-        require(kbtcPrice == targetPrice, 'Treasury: kbtc price moved');
+        uint256 dbtcPrice = _getDBTCPrice(dbondOracle);
+        require(dbtcPrice == targetPrice, 'Treasury: dbtc price moved');
         require(
-            kbtcPrice > kbtcPriceCeiling,
-            'Treasury: kbtcPrice not eligible for kbond purchase'
+            dbtcPrice > dbtcPriceCeiling,
+            'Treasury: dbtcPrice not eligible for dbond purchase'
         );
         require(
-            IERC20(kbtc).balanceOf(address(this)) >= amount,
+            IERC20(dbtc).balanceOf(address(this)) >= amount,
             'Treasury: treasury has no more budget'
         );
 
@@ -247,11 +247,11 @@ contract Treasury is ContractGuard, Epoch {
             Math.min(accumulatedSeigniorage, amount)
         );
 
-        IKlondikeAsset(kbond).burnFrom(msg.sender, amount);
-        IERC20(kbtc).safeTransfer(msg.sender, amount);
-        _updateKBTCPrice();
+        IDerivedAsset(dbond).burnFrom(msg.sender, amount);
+        IERC20(dbtc).safeTransfer(msg.sender, amount);
+        _updatedBTCPrice();
 
-        emit RedeemedKbonds(msg.sender, amount);
+        emit Redeemeddbonds(msg.sender, amount);
     }
 
     function allocateSeigniorage()
@@ -262,24 +262,24 @@ contract Treasury is ContractGuard, Epoch {
         checkEpoch
         checkOperator
     {
-        _updateKBTCPrice();
-        uint256 kbtcPrice = getSeigniorageOraclePrice();
-        if (kbtcPrice <= kbtcPriceCeiling) {
+        _updateDBTCPrice();
+        uint256 dbtcPrice = getSeigniorageOraclePrice();
+        if (dbtcPrice <= dbtcPriceCeiling) {
             return;
         }
 
-        uint256 kbtcSupply =
-            IERC20(kbtc).totalSupply().sub(accumulatedSeigniorage); //wei
-        uint256 percentage = kbtcPrice.sub(wbtcOneUnit); // sat
-        uint256 seigniorage = kbtcSupply.mul(percentage).div(wbtcOneUnit); // wei
-        IKlondikeAsset(kbtc).mint(address(this), seigniorage);
+        uint256 dbtcSupply =
+            IERC20(dbtc).totalSupply().sub(accumulatedSeigniorage); //wei
+        uint256 percentage = dbtcPrice.sub(wbtcOneUnit); // sat
+        uint256 seigniorage = dbtcSupply.mul(percentage).div(wbtcOneUnit); // wei
+        IDerivedAsset(dbtc).mint(address(this), seigniorage);
 
         uint256 devfundReserve =
             seigniorage.mul(devfundAllocationRate).div(100);
         if (devfundReserve > 0) {
-            IERC20(kbtc).safeApprove(devfund, devfundReserve);
+            IERC20(dbtc).safeApprove(devfund, devfundReserve);
             ISimpleERCFund(devfund).deposit(
-                kbtc,
+                dbtc,
                 devfundReserve,
                 'Treasury: Seigniorage Allocation'
             );
@@ -292,7 +292,7 @@ contract Treasury is ContractGuard, Epoch {
         uint256 treasuryReserve =
             Math.min(
                 seigniorage,
-                IERC20(kbond).totalSupply().sub(accumulatedSeigniorage)
+                IERC20(dbond).totalSupply().sub(accumulatedSeigniorage)
             );
         if (treasuryReserve > 0) {
             accumulatedSeigniorage = accumulatedSeigniorage.add(
@@ -306,7 +306,7 @@ contract Treasury is ContractGuard, Epoch {
         uint256 stablefundReserve =
             seigniorage.mul(stablefundAllocationRate).div(100);
         if (stablefundReserve > 0) {
-            IERC20(kbtc).safeTransfer(stablefund, stablefundReserve);
+            IERC20(dbtc).safeTransfer(stablefund, stablefundReserve);
             emit StableFundFunded(now, stablefundReserve);
         }
         seigniorage = seigniorage.sub(stablefundReserve);
@@ -314,7 +314,7 @@ contract Treasury is ContractGuard, Epoch {
         // boardroom
         uint256 boardroomReserve = seigniorage;
         if (boardroomReserve > 0) {
-            IERC20(kbtc).safeApprove(boardroom, boardroomReserve);
+            IERC20(dbtc).safeApprove(boardroom, boardroomReserve);
             IBoardroom(boardroom).allocateSeigniorage(boardroomReserve);
             emit BoardroomFunded(now, boardroomReserve);
         }
@@ -329,8 +329,8 @@ contract Treasury is ContractGuard, Epoch {
     event StableFundRateChanged(address indexed operator, uint256 newRate);
 
     // CORE
-    event RedeemedKbonds(address indexed from, uint256 amount);
-    event BoughtKbonds(address indexed from, uint256 amount);
+    event RedeemedDbonds(address indexed from, uint256 amount);
+    event BoughtDbonds(address indexed from, uint256 amount);
     event TreasuryFunded(uint256 timestamp, uint256 seigniorage);
     event BoardroomFunded(uint256 timestamp, uint256 seigniorage);
     event DevFundFunded(uint256 timestamp, uint256 seigniorage);
